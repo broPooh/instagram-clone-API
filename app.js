@@ -44,6 +44,7 @@ app.use('/api/v1/post', postRoute);
 app.use('/api/v1/bookmark', bookmarkRoute);
 app.use('/api/v1/comment', commentRoute);
 app.use('/api/v1/group', groupRoute);
+app.use('/uploads', express.static('uploads'));
 
 app.all('*', (req, res, next) => {
   next(new AppError(`can't find ${req.originalUrl} on this server`, 404));

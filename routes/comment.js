@@ -4,7 +4,9 @@ const {
             addComment,
             checkPost,
             likeComment,
-            deleteComment
+            deleteComment,
+            deleteCommentTest,
+            updateCommentTest
 } = require("../controllers/commentController");
 
 const { getProfileId } = require("../controllers/authController")
@@ -27,6 +29,8 @@ const { protect } = require("../controllers/authController")
 //comment
 router.route("/:id")
             .post(protect, checkPost,getProfileId,addComment)
+router.route("/test/:id")
+            .post(protect, getProfileId, addComment)
 
 router.route("/like/:id")
             .patch(protect,getProfileId, likeComment)
@@ -35,6 +39,9 @@ router.route("/like/:id")
 router.route("/:id/:commentId")
             .delete(protect, checkPost, deleteComment)
 
+router.route("/:id/test/:commentId")
+            .put(protect, checkPost, updateCommentTest)
+            .delete(protect, checkPost, deleteCommentTest)
 
 //reply
 

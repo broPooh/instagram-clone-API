@@ -8,6 +8,9 @@ const { promisify } = require('util');
 const Profile = require('../models/Profile');
 const Otp = require('../models/Otp');
 const Notification = require('../models/Notification');
+const mongoose = require('mongoose');
+
+const JWT_SECRET = "L3SvFadxIHXgZJeHh^74bYfcnvKNkK6D";
 
 //^middlewares
 exports.signUpValidations = (req, res, next) => {
@@ -40,10 +43,12 @@ exports.protect = async (req, res, next) => {
         }
         let decoded;
         try {
-          decoded = await promisify(jwt.verify)(
-            token,
-      process.env.JWT_LOGIN_TOKEN
-      );
+          decoded = jwt.verify(token, process.env.JWT_SECRET);
+      //     decoded = await promisify(jwt.verify)(
+      //       token,
+      // //process.env.JWT_LOGIN_TOKEN
+      // process.env.JWT_SECRET
+      // );
         } catch (e) {
           return next(new AppError('Please login to get access', 401));
         }
@@ -60,7 +65,9 @@ exports.protect = async (req, res, next) => {
       };
 
 //create profile after login
-const createProfile = async (id, email) => {
+const createProfile = async (id, email, userName) => {
+  console.log(id);
+  console.log(email);
   await Profile.updateMany({}, { followers: [], following:{}})
 
   const profile = await Profile.findOne({
@@ -70,7 +77,7 @@ const createProfile = async (id, email) => {
     const name = email.split('@')[0];
     const profile = await Profile.create({
       user: id,
-      username: name,
+      username: userName,
       name,
       email,
     });
@@ -206,6 +213,7 @@ return res.status(201).json({
 
 //login
 exports.login = catchAsync(async (req, res, next) => {
+  console.log('로그인');
   const errors = validationResult(req);
   //^Checking validation errors
   if (!errors.isEmpty()) {
@@ -214,22 +222,27 @@ exports.login = catchAsync(async (req, res, next) => {
 const user = await User.findOne({
   email: req.body.email,
 }).select('+password');
+console.log('로그인2');
 if (
   !user ||
   !(await user.comparePassword(req.body.password, user.password))
     ) {
     return next(new AppError('Invalid email or password', 400));
 }
-
-const profile = await createProfile(user._id, user.email);
+console.log(user);
+console.log('로그인3');
+const profile = await createProfile(user._id, user.email, user.username);
+console.log('로그인4');
+console.log(profile);
 const token = generateToken(
 {
   id: user._id,
 },
-    process.env.JWT_LOGIN_TOKEN,
+    //process.env.JWT_LOGIN_TOKEN,
+    process.env.JWT_SECRET,
     '1d'
     );
-
+console.log(token);
 res.status(200).json({
   status: 'success',
   data: {
@@ -259,8 +272,9 @@ exports.getUser = catchAsync(async (req, res, next) => {
 
 exports.getProfileId = async (req, res, next) => {
   const id = await Profile.findOne({ user: req.user.id });
-
+  console.log(id);
   req.profile = id._id;
+
 
   next();
 };
@@ -289,6 +303,7 @@ if (user) {
 }
 await User.create({
   email: req.body.email,
+  username: req.body.name,
   password: req.body.password,
 });
 

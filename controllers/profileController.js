@@ -7,6 +7,7 @@ const cloudinary = require('cloudinary').v2;
 const Post = require('../models/Post');
 const Message = require('../models/Messages');
 const Notification = require('../models/Notification');
+const fs = require("fs");
 
 exports.profileValidations = (req, res, next) => {
   if (req.body.accountType)
@@ -47,6 +48,20 @@ exports.getProfiles = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.getAllProfiles = catchAsync(async (req, res, next) => {
+  const profiles = await Profile.find({});
+  if (!profiles) {
+    return next(new AppError('No profile found', 400));
+  }
+  res.status(200).json({
+    status: 'success',
+    docs: profiles.length,
+    data: {
+      profiles,
+    },
+  });
+});
+
 exports.updateProfile = catchAsync(async (req, res, next) => {
   const updatedProfile = await Profile.findOneAndUpdate(
     { user: req.user.id },
@@ -64,22 +79,28 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.getProfileById = catchAsync(async (req, res, next) => {
-  const profile = await Profile.findById(req.params.userId);
+exports.updateProfileTest = catchAsync(async (req, res, next) => {
+  //let myProfile = await Profile.findById(req.user.id);
 
-  if (!profile) {
-    return next(new AppError('No profile found', 400));
-  }
-
-  res.status(200).json({
+  const updatedProfile = await Profile.findOneAndUpdate(
+    { user: req.user.id },
+    req.body,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+  return res.status(200).json({
     status: 'success',
     data: {
-      profile,
+      profile: updatedProfile,
     },
   });
 });
 
+
 exports.getProfileByName = catchAsync(async (req, res, next) => {
+  console.log(req.params.name);
   const profile = await Profile.findOne({ username: req.params.name });
 
   if (!profile) {
@@ -94,6 +115,23 @@ exports.getProfileByName = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.getProfileById = catchAsync(async (req, res, next) => {
+  console.log(req.params.id);
+  const profile = await Profile.findById(req.params.id);
+
+  if (!profile) {
+    return next(new AppError('No profile found', 400));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      profile,
+    },
+  });
+});
+
+
 exports.uploadPhoto = catchAsync(async (req, res, next) => {
   const photo = await uploadPhotoCloudinary(req.file);
 
@@ -104,6 +142,38 @@ exports.uploadPhoto = catchAsync(async (req, res, next) => {
   );
   res.status(200).json({
     success: 'true',
+    profile,
+  });
+});
+
+exports.uploadPhotoTest = catchAsync(async (req, res, next) => {
+  const photo = req.file;
+  console.log(photo);
+
+  const profile = await Profile.findOneAndUpdate(
+    { user: req.user.id },
+    { photo: photo.filename },
+    { new: true }
+  );
+  res.status(200).json({
+    success: 'true',
+    profile,
+  });
+});
+
+exports.deletePhotoTest = catchAsync(async (req, res, next) => {
+  const profile = await Profile.findOne({ user: req.user.id });
+
+  const photo = profile.photo;
+  if(photo && photo !== "") {
+    fs.unlinkSync(`./profiles/${photo}`);
+  }
+  
+  profile.photo = process.env.DEFAULT_PROFILE_PHOTO;
+  await profile.save();
+
+  res.status(200).json({
+    status: 'success',
     profile,
   });
 });
@@ -163,6 +233,8 @@ const searchHashtag = async (query) => {
   return result;
 };
 
+//const result = await Post.find({ hashtag: { $regex: '.*' + query + '.*' } });
+
 exports.search = catchAsync(async (req, res, next) => {
   if (req.query.find[0] === '#') {
     const hashtag = await searchHashtag(req.query.find.slice(1));
@@ -185,6 +257,37 @@ exports.search = catchAsync(async (req, res, next) => {
   });
 });
 
+
+exports.searchProfile = catchAsync(async (req, res, next) => {
+
+  //const queryField = new RegExp('^' + req.query.find);
+  const query = req.query.find;
+  const result = await Profile.find({ username: { $regex: '.*' + query + '.*' } }).lean();
+
+  let newResult = new Array();
+  result.forEach(profile => {
+    delete profile.posts;
+    newResult.push(profile);
+    console.log(profile);
+  });
+
+  // follwings.forEach(following => {
+  //   delete following.posts;
+  //   newFollwings.push(following);
+  //   console.log(following);
+  // });
+
+  // const result = await Profile.find({
+  //   username: { $regex: queryField },
+  // });
+
+  res.status(200).json({
+    status: 'success',
+    data: newResult.length,
+    users: newResult,
+  });
+});
+
 const followRequest = async (id, profile) => {
   const request = await Profile.findByIdAndUpdate(
     id,
@@ -198,7 +301,25 @@ const followRequest = async (id, profile) => {
   return request;
 };
 
+exports.followRequestTest = catchAsync(async (req, res, next) => {
+  
+  const request = await Profile.findByIdAndUpdate(
+    id = req.body.id,
+    {
+      $push: { requests: profile },
+    },
+    { new: true }
+  );
+  if (!request) return next(new AppError('User not found', 400));
+
+  return res.status(200).json({
+    status: 'success',
+    request,
+  });
+});
+
 exports.follow = catchAsync(async (req, res, next) => {
+  console.log("here");
   req.profile.toString() === req.body.id.toString() &&
     next(new AppError('You cant follow yourself', 400));
 
@@ -211,13 +332,18 @@ exports.follow = catchAsync(async (req, res, next) => {
   }
 
   const following = await Profile.findOne({ user: req.user.id });
+  //console.log(following);
 
   await following.following.set(req.body.name, {
     user: req.body.id,
   });
   await following.save();
 
-  const user = await Profile.findById(req.body.id);
+  console.log(req.body.id);
+
+  //const user = await Profile.findById(req.body.id);
+  const user = await Profile.findOne({ user: req.body.id });
+  console.log(user);
   await user.followers.set(following.username, {
     user: req.user.id,
   });
@@ -247,11 +373,11 @@ exports.unfollow = catchAsync(async (req, res, next) => {
   await user.followers.delete(following.username);
   await user.save();
 
-  await Notification.deleteMany({
-    to: req.body.id,
-    user: following._id,
-    type: 'Follow',
-  });
+  // await Notification.deleteMany({
+  //   to: req.body.id,
+  //   user: following._id,
+  //   type: 'Follow',
+  // });
 
   res.status(200).json({
     status: 'success',
@@ -325,5 +451,37 @@ exports.getNotification = catchAsync(async (req, res, next) => {
 
   return res.status(200).json({
     notifications,
+  });
+});
+
+
+exports.getFollowingList = catchAsync(async (req, res, next) => {
+  const myProfile = await Profile.findOne({ user: req.user.id });
+  const followerMap = myProfile.following;
+  const followerIdArray = new Array();
+  followerMap.forEach((value, key, mapObject) => {
+    console.log(key +' , ' + value.user);
+    followerIdArray.push(`${value.user}`);
+  });
+  
+  console.log(followerIdArray);
+  //const posts = await Post.find({user : { $in : followerIdArray}, accountType : "public"})
+  const follwings = await Profile.find({user :{$in : followerIdArray}}, {user:1, username:1, photo:1})
+    //.populate('profile')
+    .lean();
+  const newFollwings = new Array();
+
+  follwings.forEach(following => {
+    delete following.posts;
+    newFollwings.push(following);
+    console.log(following);
+  });
+  //const posts = await Post.find({user :{$in : followerIdArray}}).lean();
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      follwings : newFollwings,
+    },
   });
 });

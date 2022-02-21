@@ -51,9 +51,10 @@ const profileSchema = new mongoose.Schema(
       select: false,
     },
     photo: {
-      type: Object,
+      type: String,
       default:
-        'https://scontent-atl3-1.cdninstagram.com/v/t51.2885-19/44884218_345707102882519_2446069589734326272_n.jpg?_nc_ht=scontent-atl3-1.cdninstagram.com&_nc_ohc=MVEG8QTyVK4AX-E1QAd&oh=a2338939f84d05cff0d598c29ce23a6a&oe=5FB5D50F&ig_cache_key=YW5vbnltb3VzX3Byb2ZpbGVfcGlj.2',
+        'https://res.cloudinary.com/brocloudinary/image/upload/v1644206367/cld-sample.jpg',
+        //'https://scontent-atl3-1.cdninstagram.com/v/t51.2885-19/44884218_345707102882519_2446069589734326272_n.jpg?_nc_ht=scontent-atl3-1.cdninstagram.com&_nc_ohc=MVEG8QTyVK4AX-E1QAd&oh=a2338939f84d05cff0d598c29ce23a6a&oe=5FB5D50F&ig_cache_key=YW5vbnltb3VzX3Byb2ZpbGVfcGlj.2',
     },
     followers: {
       type: Map,
@@ -100,11 +101,19 @@ profileSchema.virtual('posts', {
   foreignField: 'profile',
 });
 
-profileSchema.pre(/^find/, function (next) {
-  this.find().populate('posts');
+// profileSchema.pre(/^find/, function (next) {
+//   this.find().populate('posts');
 
+//   next();
+// });
+
+var autoPopulate = function(next) {
+  //this.populate('updated_by','name').populate('created_by','name');
+  this.find().populate('posts');
   next();
-});
+};
+
+//profileSchema.pre('find', autoPopulate);
 
 const Profile = mongoose.model('Profile', profileSchema);
 module.exports = Profile;

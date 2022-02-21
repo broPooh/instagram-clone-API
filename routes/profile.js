@@ -17,13 +17,21 @@ const {
   unfollow,
   userSettings,
   followRequest,
+  followRequestTest,
   getProfileByName,
+  getAllProfiles,
   acceptRequest,
   getFollowRequest,
-  getNotification
+  getNotification,
+  getFollowingList,
+  uploadPhotoTest,
+  deletePhotoTest,
+  searchProfile
 } = require('../controllers/profileController');
 
 router.route('/search').get(search);
+router.route('/find').get(searchProfile);
+const profileUpload = require('../utils/multerProfile');
 
 
 router
@@ -39,15 +47,26 @@ router
 .put(protect, upload.single('image'), updatePhoto)
 .delete(protect, deletePhoto);
 
+router
+.route('/profile/photo/test')
+.post(protect, profileUpload.single('image'), uploadPhotoTest)
+.delete(protect, deletePhotoTest);
+
+
+router.route('/all').get(getAllProfiles);
 router.route('/:name').get(getProfileByName);
+//router.route('/:id').get(getProfileById);
+
+
 
 router.route('/follow').post(protect, getProfileId, follow);
 router.route('/unfollow').post(protect, getProfileId, unfollow);
+router.route('/follow/followList').get(protect, getProfileId, getFollowingList);
 
 router.route('/settings').put(protect, userSettings);
 
 router.route('/request-follow');
-// .post(protect, getProfileId, followRequest)
+//.post(protect, getProfileId, followRequestTest);
 
 router
 .route('/request/accept-request')

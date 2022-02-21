@@ -1,11 +1,23 @@
 const mongoose = require('mongoose');
 const Profile = require('./Profile');
+const MongoPaging = require('mongo-cursor-pagination');
+// const counterSchema = new mongoose.Schema({ counter: Number });
+// counterSchema.plugin(MongoPaging.mongoosePlugin);
+// const counter = mongoose.model('counter', counterSchema);
+//const moongooseCursor = require('moongoose-cursor');
+
+
 
 const postSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Profile',
+    },
+    accountType: {
+      type: String,
+      enum: ['public', 'private'],
+      default: 'public',
     },
     createdAt: {
       type: Date,
@@ -14,6 +26,12 @@ const postSchema = new mongoose.Schema(
     profile: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Profile',
+    },
+    title: {
+      type: String,
+    },
+    body: {
+      type: String,
     },
     caption: {
       type: String,
@@ -30,16 +48,21 @@ const postSchema = new mongoose.Schema(
       },
     ],
     image: Array,
+    file: {
+      type: String,
+    },
     comment: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Comment',
     },
+    counter : Number
   },
   {
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
   }
 );
+postSchema.plugin(MongoPaging.mongoosePlugin);
 
 postSchema.set('toObject', { virtuals: true });
 postSchema.set('toJSON', { virtuals: true });
@@ -49,6 +72,14 @@ postSchema.virtual('commentsPost', {
   localField: '_id',
   foreignField: 'post',
 });
+
+var autoPopulate = function(next) {
+  //this.populate('updated_by','name').populate('created_by','name');
+  this.find().populate('commentsPost');
+  next();
+};
+
+postSchema.pre('commentsPost', autoPopulate);
 
 postSchema.pre('save', function (next) {
   let caption = this.caption.replace(/\s/g, '');
@@ -77,11 +108,14 @@ postSchema.methods.getProfileId = async function (id) {
 };
 
 //Todo
-postSchema.pre(/^find/, function (next) {
-  this.find().populate('commentsPost');
+// postSchema.pre(/^find/, function (next) {
+//   this.find().populate('commentsPost');
 
-  next();
-});
+//   next();
+// });
+
+
+
 
 const Post = mongoose.model('Post', postSchema);
 

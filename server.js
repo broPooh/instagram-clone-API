@@ -2,14 +2,19 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const Notification = require('./models/Notification');
 
-dotenv.config({
-  path: './config.env',
-});
+// dotenv.config({
+//   path: './config.env',
+// });
+require('dotenv').config();
+
 
 const app = require('./app');
+const MONGO_URL=`mongodb+srv://bro:znznektm~1@cluster0.70y6a.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 
 mongoose
-  .connect(process.env.DB, {
+  //.connect(process.env.DB, {
+  .connect(MONGO_URL, {
+    dbName: 'instaCloneTest2',
     useNewUrlParser: true,
     useCreateIndex: true,
     useFindAndModify: false,
@@ -23,7 +28,7 @@ mongoose
   });
 
 const server = app.listen(process.env.PORT || 3001, () => {
-  console.log('Server started');
+  console.log('Server started' + process.env.PORT);
 });
 
 const io = require('socket.io')(server, { pingTimeout: 60000 });

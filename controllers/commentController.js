@@ -6,7 +6,11 @@ const AppError = require('../utils/appError');
 
 //check post is in db
 exports.checkPost = async (req, res, next) => {
-  const post = await Post.findById(req.params.id);
+  console.log(`23 ${req.params.id}`);
+  //const post = await Post.findById(req.params.id);
+  const post = await Post.findById(req.params.id).lean();
+  //const post = await Post.findOne({_id : req.params.id}).lean();
+  console.log(post);
 
   if (!post) {
     return next(new AppError('Post not available', 400));
@@ -18,13 +22,31 @@ exports.checkPost = async (req, res, next) => {
 
 exports.addComment = catchAsync(async (req, res, next) => {
   const id = req.profile;
+  console.log(id);
+  console.log(req.params.id);
+  const post = await Post.find();
+  //const post = await Post.findById(req.params.id);
+  //const post = await Post.findOne({_id : req.params.id}).lean();
+  console.log(post);
 
-  const comment = await Comment.create({
+  if (!post) {
+    return next(new AppError('Post not available', 400));
+  }
+  // const comment = await Comment.create({
+  //   user: req.user.id,
+  //   profile: id,
+  //   post: req.params.id,
+  //   ...req.body,
+  // });
+  const comment = new Comment({
     user: req.user.id,
     profile: id,
     post: req.params.id,
     ...req.body,
   });
+  await comment.save();
+
+  console.log(comment);
 
   res.status(200).json({
     status: 'success',
@@ -69,4 +91,34 @@ exports.deleteComment = catchAsync(async (req, res, next) => {
         status: 'success',
       }))
     : next(new AppError('You are not authorized to delete this comment', 401));
+});
+
+exports.deleteCommentTest = catchAsync(async (req, res, next) => {
+  const comment = await Comment.findById(req.params.commentId);
+  const post = await Post.findById(req.params.id);
+  if(comment && (comment.user.toString() === req.user.id.toString()) || (post.user.toString() === req.user.id.toString())) {
+    await comment.remove();
+    res.json({
+        status: 'success',
+    });
+  } else {
+    next(new AppError('You are not authorized to delete this comment', 401));
+  }
+});
+
+exports.updateCommentTest = catchAsync(async (req, res, next) => {
+  if(!req.body.comment) {
+    next(new AppError('Enter the comment', 401));
+  }
+  const comment = await Comment.findById(req.params.commentId);
+  if(comment && (comment.user.toString() === req.user.id.toString())) {
+    comment.comment = req.body.comment;
+    await comment.save();
+    res.json({
+        status: 'success',
+        comment,
+    });
+  } else {
+    next(new AppError('You are not authorized to delete this comment', 401));
+  }
 });
