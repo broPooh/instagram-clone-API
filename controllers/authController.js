@@ -35,7 +35,7 @@ exports.protect = async (req, res, next) => {
           ) {
           token = req.headers.authorization.split(' ')[1];
         }
-        console.log(2, token);
+        //console.log(2, token);
         if (!token) {
           return next(
             new AppError('You are not logged in.Please login to get access', 401)
@@ -56,7 +56,7 @@ exports.protect = async (req, res, next) => {
         const freshUser = await User.findById(decoded.id);
 
         if (!freshUser) {
-          return next(new AppError('User does not exist', 401));
+          return next(new AppError('User does not exist', 400));
         }
 
         req.user = freshUser;
@@ -66,20 +66,19 @@ exports.protect = async (req, res, next) => {
 
 //create profile after login
 const createProfile = async (id, email, userName) => {
-  console.log(id);
-  console.log(email);
-  await Profile.updateMany({}, { followers: [], following:{}})
+  //console.log(id);
+  //console.log(email);
+  //await Profile.updateMany({}, { followers: [], following:{}})
 
-  const profile = await Profile.findOne({
-    user: id,
-  });
+  const profile = await Profile.findOne({user: id});
+  
   if (!profile) {
     const name = email.split('@')[0];
     const profile = await Profile.create({
       user: id,
-      username: userName,
       name,
       email,
+      username: userName,
     });
     // await User.findByIdAndUpdate(id, { profile: _id })
     return profile;
@@ -213,43 +212,39 @@ return res.status(201).json({
 
 //login
 exports.login = catchAsync(async (req, res, next) => {
-  console.log('로그인');
-  const errors = validationResult(req);
+  //console.log('로그인');
+  try {
+  //const errors = validationResult(req);
+  
   //^Checking validation errors
-  if (!errors.isEmpty()) {
-    return next(new AppError(errors.array()[0].msg, 400));
-}
-const user = await User.findOne({
-  email: req.body.email,
-}).select('+password');
-console.log('로그인2');
-if (
-  !user ||
-  !(await user.comparePassword(req.body.password, user.password))
-    ) {
-    return next(new AppError('Invalid email or password', 400));
-}
-console.log(user);
-console.log('로그인3');
-const profile = await createProfile(user._id, user.email, user.username);
-console.log('로그인4');
-console.log(profile);
-const token = generateToken(
-{
-  id: user._id,
-},
-    //process.env.JWT_LOGIN_TOKEN,
-    process.env.JWT_SECRET,
-    '1d'
-    );
-console.log(token);
-res.status(200).json({
-  status: 'success',
-  data: {
+  // if (!errors.isEmpty()) {
+  //   return next(new AppError(errors.array()[0].msg, 400));
+  // }
+  const user = await User.findOne({email: req.body.email}).select('+password');
+  
+  if (!user || !(await user.comparePassword(req.body.password, user.password))) {
+      return next(new AppError('Invalid email or password', 400));
+  }
+  
+  //const profile = await createProfile(user._id, user.email, user.username);
+  //console.log('로그인4');
+  //console.log(profile);
+  const token = generateToken({id: user._id}, process.env.JWT_SECRET,'1d');
+  //console.log(token);
+  res.status(200).json({
+    //status: 'success',
     token,
-    profile,
-  },
-});
+    //profile
+    // data: {
+    //   token,
+    //   profile,
+    // },
+  });
+
+  } catch(error) {
+    return res.sendStatus(500);
+  }
+  
 });
 
 exports.getUsers = catchAsync(async (req, res, next) => {
@@ -271,8 +266,10 @@ exports.getUser = catchAsync(async (req, res, next) => {
 });
 
 exports.getProfileId = async (req, res, next) => {
-  const id = await Profile.findOne({ user: req.user.id });
-  console.log(id);
+  //const id = await Profile.findOne({ user: req.user.id });
+  const id = await User.findById(req.user.id);
+  if (!id) next(new AppError('No user found', 400));
+  //console.log(id);
   req.profile = id._id;
 
 
@@ -280,35 +277,59 @@ exports.getProfileId = async (req, res, next) => {
 };
 
 exports.myProfile = catchAsync(async (req, res, next) => {
-  const profile = await Profile.findOne({ user: req.user.id });
-  if (!profile) next(new AppError('No user found', 400));
-    const notification = await Notification.find({to: profile._id, seen: false})
+  try {
+    //const profile = await Profile.findOne({ user: req.user.id });
+    const profile = await User.findById(req.user.id);
+    //if (!profile) next(new AppError('No user found', 404));
+    //const notification = await Notification.find({to: profile._id, seen: false})
     res.status(200).json({
-      profile,
-      notification: notification.length
+      user : profile,
+      //notification: notification.length
     });
-  });
-
-  exports.signUpWeb = catchAsync(async (req, res, next) => {
-    const errors = validationResult(req);
-
-  //^Checking validation errors
-  if (!errors.isEmpty()) {
-    return next(new AppError(errors.array()[0].msg, 400));
-}
-
-const user = await User.findOne({ email: req.body.email });
-if (user) {
-  return next(new AppError('Email already taken', 400));
-}
-await User.create({
-  email: req.body.email,
-  username: req.body.name,
-  password: req.body.password,
+  } catch(error) {
+    console.log(error);
+    return res.sendStatus(500);
+  }
 });
 
-return res.status(201).json({
-  status: 'success',
-  data: 'Verified.Please login',
-});
+exports.signUpWeb = catchAsync(async (req, res, next) => {
+  try {
+    if(!(req.body.userName&&req.body.email&&req.body.password)){
+      return res.sendStatus(501);
+    }
+    // const errors = validationResult(req);
+  
+    // //^Checking validation errors
+    // if (!errors.isEmpty()) {
+    //   return next(new AppError(errors.array()[0].msg, 400));
+    // }
+  
+    const user = await User.findOne({ email: req.body.email });
+    if (user) {
+      return next(new AppError('Email already taken', 406));
+    }
+
+    // const profile = await Profile.create({
+    //   user: id,
+    //   name,
+    //   email,
+    //   username: userName,
+    // });
+
+    await User.create({
+      email: req.body.email,
+      username: req.body.userName,
+      password: req.body.password,
+    });
+  
+    return res.sendStatus(200);
+    // return res.status(200).json({
+    //   //status: 'success',
+    //   //data: 'Verified.Please login',
+    // });
+
+  } catch(error) {
+    return res.sendStatus(500);
+  }
+  
 });

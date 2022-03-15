@@ -10,9 +10,12 @@ const MongoPaging = require('mongo-cursor-pagination');
 
 const postSchema = new mongoose.Schema(
   {
+    // user: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: 'User',
+    // },
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Profile',
+      type: String,
     },
     accountType: {
       type: String,
@@ -23,10 +26,10 @@ const postSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    profile: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Profile',
-    },
+    // profile: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: 'Profile',
+    // },
     title: {
       type: String,
     },
@@ -37,17 +40,18 @@ const postSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    location: {
-      type: String,
-    },
+    // location: {
+    //   type: String,
+    // },
     hashtag: Array,
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Profile',
+        //ref: 'Profile',
+        ref: 'User',
       },
     ],
-    image: Array,
+    //image: Array,
     file: {
       type: String,
     },
@@ -70,7 +74,8 @@ postSchema.set('toJSON', { virtuals: true });
 postSchema.virtual('commentsPost', {
   ref: 'Comment',
   localField: '_id',
-  foreignField: 'post',
+  //foreignField: 'post',
+  foreignField: 'comment',
 });
 
 var autoPopulate = function(next) {
@@ -83,10 +88,11 @@ postSchema.pre('commentsPost', autoPopulate);
 
 postSchema.pre('save', function (next) {
   let caption = this.caption.replace(/\s/g, '');
-  console.log(caption);
+  //console.log(caption);
   let hashTagIndex = caption.indexOf('#');
   if (hashTagIndex === -1) {
-    this.hashtag = undefined;
+    //this.hashtag = undefined;
+    this.hashtag = [];
     return next();
   }
   let hashTagSplice = caption.slice(hashTagIndex);

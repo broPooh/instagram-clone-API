@@ -1,3 +1,4 @@
+const User = require('../models/User');
 const Profile = require('../models/Profile');
 const catchAsync = require('../utils/catchAsync');
 const { validationResult } = require('express-validator');
@@ -147,35 +148,59 @@ exports.uploadPhoto = catchAsync(async (req, res, next) => {
 });
 
 exports.uploadPhotoTest = catchAsync(async (req, res, next) => {
-  const photo = req.file;
-  console.log(photo);
+  try {
+    if(!req.file){
+      return res.sendStatus(501);
+    }
+    const photo = req.file;
+    //console.log(photo);
 
-  const profile = await Profile.findOneAndUpdate(
-    { user: req.user.id },
-    { photo: photo.filename },
-    { new: true }
-  );
-  res.status(200).json({
-    success: 'true',
-    profile,
-  });
+    const user = await User.findById(req.user.id);
+    user.photo = photo.filename;
+    await user.save();
+
+    // const profile = await User.findOneAndUpdate(
+    //   { id: req.user.id },
+    //   { photo: photo.filename }
+    // );
+
+    // const profile = await Profile.findOneAndUpdate(
+    //   { user: req.user.id },
+    //   { photo: photo.filename },
+    //   { new: true }
+    // );
+
+    res.status(200).json({
+      //success: 'true',
+      user : user,
+    });
+  } catch(error) {
+    return res.sendStatus(500);
+  }
 });
 
 exports.deletePhotoTest = catchAsync(async (req, res, next) => {
-  const profile = await Profile.findOne({ user: req.user.id });
+  try {
+    
+    //const profile = await Profile.findOne({ user: req.user.id });
+    const profile = await User.findById(req.user.id);
+    const photo = profile.photo;
 
-  const photo = profile.photo;
-  if(photo && photo !== "") {
-    fs.unlinkSync(`./profiles/${photo}`);
-  }
+    if(photo && photo !== "") {
+      fs.unlinkSync(`./profiles/${photo}`);
+    }
+
+    //profile.photo = process.env.DEFAULT_PROFILE_PHOTO;
+    profile.photo = "";
+    await profile.save();
   
-  profile.photo = process.env.DEFAULT_PROFILE_PHOTO;
-  await profile.save();
-
-  res.status(200).json({
-    status: 'success',
-    profile,
-  });
+    res.status(200).json({
+      //status: 'success',
+      user : profile,
+    });
+  } catch(error) {
+    return res.sendStatus(500);
+  }
 });
 
 exports.messagePhoto = catchAsync(async (req, res, next) => {
@@ -260,32 +285,43 @@ exports.search = catchAsync(async (req, res, next) => {
 
 exports.searchProfile = catchAsync(async (req, res, next) => {
 
-  //const queryField = new RegExp('^' + req.query.find);
-  const query = req.query.find;
-  const result = await Profile.find({ username: { $regex: '.*' + query + '.*' } }).lean();
+  try {
+    //const queryField = new RegExp('^' + req.query.username);
+    if(!req.query.username){
+      return res.sendStatus(501);
+    }
+    const query = req.query.username;
+    //const result = await Profile.find({ username: { $regex: '.*' + query + '.*' } }).lean();
+    //const result = await User.find({ username: { $regex: '.*' + query + '.*' } }).lean();
+    const result = await User.find({ username: { $regex: '.*' + query + '.*' } });
 
-  let newResult = new Array();
-  result.forEach(profile => {
-    delete profile.posts;
-    newResult.push(profile);
-    console.log(profile);
-  });
+    let newResult = new Array();
+    result.forEach(profile => {
+      delete profile.posts;
+      newResult.push(profile);
+      console.log(profile);
+    });
 
-  // follwings.forEach(following => {
-  //   delete following.posts;
-  //   newFollwings.push(following);
-  //   console.log(following);
-  // });
+    // follwings.forEach(following => {
+    //   delete following.posts;
+    //   newFollwings.push(following);
+    //   console.log(following);
+    // });
 
-  // const result = await Profile.find({
-  //   username: { $regex: queryField },
-  // });
+    // const result = await Profile.find({
+    //   username: { $regex: queryField },
+    // });
 
-  res.status(200).json({
-    status: 'success',
-    data: newResult.length,
-    users: newResult,
-  });
+    res.status(200).json({
+      //status: 'success',
+      data: newResult.length,
+      //profiles: newResult,
+      users: newResult,
+    });
+
+  } catch(error) {
+    return res.sendStatus(500);
+  }
 });
 
 const followRequest = async (id, profile) => {
@@ -319,72 +355,104 @@ exports.followRequestTest = catchAsync(async (req, res, next) => {
 });
 
 exports.follow = catchAsync(async (req, res, next) => {
-  console.log("here");
-  req.profile.toString() === req.body.id.toString() &&
-    next(new AppError('You cant follow yourself', 400));
+  try {
+    if(req.user.id.toString() === req.body.id.toString()) {
+      next(new AppError('You cant follow yourself', 405));
+    }
+    // if(req.profile.toString() === req.body.id.toString()) {
+    //   next(new AppError('You cant follow yourself', 405));
+    // }
+    // req.profile.toString() === req.body.id.toString() &&
+    // next(new AppError('You cant follow yourself', 405));
 
-  if (req.body.accountType === 'private') {
-    const request = followRequest(req.body.id, req.profile);
+  // if (req.body.accountType === 'private') {
+  //   const request = followRequest(req.body.id, req.profile);
 
-    return res.status(200).json({
-      data: request,
+  //   return res.status(200).json({
+  //     data: request,
+  //   });
+  // }
+
+    //팔로우를 신청한 유저
+    //const following = await Profile.findOne({ user: req.user.id });
+    const following = await User.findById(req.user.id);
+    //팔로우를 받은 유저
+    //const user = await Profile.findOne({ user: req.body.id });
+    const user = await User.findById(req.body.id);
+    if(!user) {
+      return res.sendStatus(406);
+    }
+
+    console.log(user.username);
+    await following.following.set(user.username, {
+      userId: req.body.id,
     });
+    await following.save();
+    await user.followers.set(following.username, {
+      userId: req.user.id,
+    });
+    await user.save();
+    res.status(200).json({
+      //status: 'success',
+      user : following,
+      //user: user.followers,
+    });
+  } catch(error) {
+    return res.sendStatus(500);
   }
-
-  const following = await Profile.findOne({ user: req.user.id });
-  //console.log(following);
-
-  await following.following.set(req.body.name, {
-    user: req.body.id,
-  });
-  await following.save();
-
-  console.log(req.body.id);
-
-  //const user = await Profile.findById(req.body.id);
-  const user = await Profile.findOne({ user: req.body.id });
-  console.log(user);
-  await user.followers.set(following.username, {
-    user: req.user.id,
-  });
-  await user.save();
-  res.status(200).json({
-    status: 'success',
-    following,
-    user: user.followers,
-  });
 });
+
 //Todo unfollow
 exports.unfollow = catchAsync(async (req, res, next) => {
-  req.user.id === req.params.id &&
-    next(new AppError('You cant unfollow yourself', 400));
-  const following = await Profile.findOne({ user: req.user.id });
-  if (!(await following.following.get(req.body.name))) {
-    return res.status(200).json({
-      status: 'success',
-      following,
-    });
+  try {
+
+    if(req.user.id.toString() === req.body.id.toString()) {
+      next(new AppError('You cant unfollow yourself', 405));
+    }
+    // req.user.id === req.params.id &&
+    // next(new AppError('You cant unfollow yourself', 400));
+    
+    //언팔로우를 요청한 본인
+    //const following = await Profile.findOne({ user: req.user.id });
+    const following = await User.findById(req.user.id);
+
+    //const user = await Profile.findById(req.body.id);
+    //const user = await Profile.findOne({ user: req.body.id });
+    const user = await User.findById(req.body.id);
+    if(!user) {
+      return res.sendStatus(406);
+    }
+    const username = user.username;
+    //console.log(username);
+
+    if (!(await following.following.get(username))) {
+      return res.status(200).json({
+        //status: 'success',
+        profile : following,
+      });
+    } else {
+      await following.following.delete(username);
+      await following.save();
+
+
+      await user.followers.delete(following.username);
+      await user.save();
+
+      // await Notification.deleteMany({
+      //   to: req.body.id,
+      //   user: following._id,
+      //   type: 'Follow',
+      // });
+
+      res.status(200).json({
+        //status: 'success',
+        user : following,
+        //user: user.followers,
+      });
+    }
+  } catch(error) {
+    return res.sendStatus(500);
   }
-  await following.following.delete(req.body.name);
-  await following.save();
-
-  const user = await Profile.findById(req.body.id);
-
-  await user.followers.delete(following.username);
-  await user.save();
-
-  // await Notification.deleteMany({
-  //   to: req.body.id,
-  //   user: following._id,
-  //   type: 'Follow',
-  // });
-
-  res.status(200).json({
-    status: 'success',
-
-    following,
-    user: user.followers,
-  });
 });
 
 exports.userSettings = catchAsync(async (req, res, next) => {

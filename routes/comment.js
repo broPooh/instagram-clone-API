@@ -27,13 +27,24 @@ const { protect } = require("../controllers/authController")
 //router.route("/:id").get(getComment)
 
 //comment
-router.route("/:id")
-            .post(protect, checkPost,getProfileId,addComment)
+// router.route("/:id")
+//             .post(protect, checkPost, getProfileId, addComment)
+
+//comment
+router.route("/:postId")
+            .post(protect, checkPost, getProfileId, addComment)
+
+router.route("/update/:commentId")
+            .put(protect, updateCommentTest)
+
+router.route("/delete/:commentId")
+            .delete(protect, deleteCommentTest)            
+
 router.route("/test/:id")
             .post(protect, getProfileId, addComment)
 
 router.route("/like/:id")
-            .patch(protect,getProfileId, likeComment)
+            .patch(protect, getProfileId, likeComment)
 
 
 router.route("/:id/:commentId")

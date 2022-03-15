@@ -6,10 +6,14 @@ const commentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
-    profile: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Profile',
+    username: {
+      type: String,
+      trim: true,
     },
+    // profile: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: 'Profile',
+    // },
     comment: {
       type: String,
       required: [true, 'Comment is required'],
@@ -17,34 +21,34 @@ const commentSchema = new mongoose.Schema(
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Profile',
+        ref: 'User',
       },
     ],
     post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Post',
     },
-    reply: [
-      {
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-        },
-        comment: {
-          type: String,
-        },
-        profiles: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Profile',
-        },
-        like: [
-          {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Profile',
-          },
-        ],
-      },
-    ],
+    // reply: [
+    //   {
+    //     user: {
+    //       type: mongoose.Schema.Types.ObjectId,
+    //       ref: 'User',
+    //     },
+    //     comment: {
+    //       type: String,
+    //     },
+    //     profiles: {
+    //       type: mongoose.Schema.Types.ObjectId,
+    //       ref: 'Profile',
+    //     },
+    //     like: [
+    //       {
+    //         type: mongoose.Schema.Types.ObjectId,
+    //         ref: 'Profile',
+    //       },
+    //     ],
+    //   },
+    // ],
     createdAt: {
       type: Date,
       default: Date.now,
@@ -65,16 +69,17 @@ const commentSchema = new mongoose.Schema(
 
 commentSchema.pre(/^find/, function (next) {
   this.find()
-    .populate('profile')
+    // .populate('profile')
     .populate({
       path: 'likes',
-      select: 'username user name photo _id',
+      //select: 'username user name photo _id',
+      select: 'username photo _id',
     })
-    .populate({
-      path: 'reply.like',
-      select: 'username user name photo _id',
-    })
-    .populate('reply.profiles');
+    // .populate({
+    //   path: 'reply.like',
+    //   select: 'username user name photo _id',
+    // })
+    // .populate('reply.profiles');
 
   next();
 });

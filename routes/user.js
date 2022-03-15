@@ -12,8 +12,18 @@ const {
   activate,
   myProfile,
   protect,
+  getProfileId,
   signUpWeb,
 } = require('../controllers/authController');
+
+const {
+  follow,
+  unfollow,
+  uploadPhotoTest,
+  deletePhotoTest,
+  searchProfile
+} = require('../controllers/profileController');
+const profileUpload = require('../utils/multerProfile');
 
 router.route('/').get(getUsers);
 //outer.route("/").get(getUser)
@@ -72,5 +82,16 @@ router.post(
   ],
   signUpWeb
 );
+
+
+router.route('/find').get(searchProfile);
+
+router
+.route('/photo')
+.post(protect, profileUpload.single('image'), uploadPhotoTest)
+.delete(protect, deletePhotoTest);
+
+router.route('/follow').post(protect, getProfileId, follow);
+router.route('/unfollow').post(protect, getProfileId, unfollow);
 
 module.exports = router;

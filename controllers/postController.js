@@ -1,3 +1,4 @@
+const User = require('../models/User');
 const Post = require('../models/Post');
 const Profile = require('../models/Profile');
 const getProfileId = require('../utils/profile');
@@ -21,8 +22,8 @@ exports.getAllPostTest2 = catchAsync(async (req, res, next) => {
       // console.log(`length ${result.size}`);
       res.status(200).json({
         status: 'success',
-        data: result.length,
-        posts : result,
+        data: result.results.length,
+        posts : result.results,
       });
     })
     .catch((err) => {
@@ -91,122 +92,151 @@ exports.createPost = catchAsync(async (req, res, next) => {
 });
 
 exports.createPostTest = catchAsync(async (req, res, next) => {
-  //console.log('test');
-  const file = req.file;
-  console.log(file);
-  //console.log(req.file);
-  //let image = [];
-  // for (const file of files) {
-  //   const newPath = await fileUpload(file);
+  try {
+    //console.log('test');
+    const file = req.file;
+    //console.log(file);
+    //console.log(req.file);
+    //let image = [];
+    // for (const file of files) {
+    //   const newPath = await fileUpload(file);
 
-  //   image.push({
-  //     cloudinary_id: newPath.public_id,
-  //     url: newPath.secure_url,
-  //   });
-  // }
+    //   image.push({
+    //     cloudinary_id: newPath.public_id,
+    //     url: newPath.secure_url,
+    //   });
+    // }
 
-  const post = await Post.create({
-    user: req.user.id,
-    //user: req.profile,
-    //image: image,
-    //image: file != undefined ? `http://localhost:8080/${file.path}` : null,
-    //file: file != undefined ? `http://localhost:8080/${file.path}` : "",
-    file: file != undefined ? file.filename : "",
-    ...req.body,
-    profile: req.profile,
-  });
+    const post = await Post.create({
+      user: req.user.id,
+      //user: req.profile,
+      //image: image,
+      //profile: req.profile,
+      file: file != undefined ? file.filename : "",
+      ...req.body,
+    });
 
-  res.status(201).json({
-    status: 'success',
-    post,
-  });
+    res.status(200).json({
+      //status: 'success',
+      post,
+    });
+
+  } catch(error) {
+    return res.sendStatus(500);
+  }
 });
 
 exports.updatePost = catchAsync(async (req, res, next) => {
-  console.log(req.file);
-  const file = req.file;
-  let post = await Post.findById(req.params.id);
-  if (!post) {
-    return next(new AppError('Post not found', 400));
-  }
-  //  console.log(post, post.user.toString() === req.user.id)
-  if (post.user.toString() !== req.user.id) {
-    return next(
-      new AppError('You are not authorized to delete this post', 401)
-    );
-  }
-
-  if(file) {
-    //변경전 파일 지우는 로직 필요
-    const oldFile = post.file;
-    if(oldFile && oldFile !== "") {
-      console.log(oldFile);
-      fs.unlinkSync(`./uploads/${oldFile}`);
+  try {
+    //console.log(req.file);
+    const file = req.file;
+    let post = await Post.findById(req.params.id);
+    if (!post) {
+      return next(new AppError('Post not found', 404));
     }
-      post.file = file.filename;
-  }
-  
-  if(req.body.title) {
-    post.title = req.body.title;
-  }
-  if(req.body.body) {
-    post.body = req.body.body;
-  }
-  if(req.body.caption) {
-    post.caption = req.body.caption;
-  }
-  if(req.body.accountType) {
-    post.accountType = req.body.accountType;
-  }
-  await post.save();
-  const updatePost = await Post.findById(req.params.id);
+    //  console.log(post, post.user.toString() === req.user.id)
+    if (post.user.toString() !== req.user.id) {
+      return next(
+        new AppError('You are not authorized to delete this post', 402)
+      );
+    }
 
-  res.status(201).json({
-    status: 'success',
-    post : updatePost,
-  });
+    if(file) {
+      //변경전 파일 지우는 로직 필요
+      const oldFile = post.file;
+      if(oldFile && oldFile !== "") {
+        //console.log(oldFile);
+        fs.unlinkSync(`./uploads/${oldFile}`);
+      }
+        post.file = file.filename;
+    }
+    
+    if(req.body.title) {
+      post.title = req.body.title;
+    }
+    if(req.body.body) {
+      post.body = req.body.body;
+    }
+    if(req.body.caption) {
+      post.caption = req.body.caption;
+    }
+    if(req.body.accountType) {
+      post.accountType = req.body.accountType;
+    }
+    await post.save();
+    const updatePost = await Post.findById(req.params.id);
+
+    res.status(200).json({
+      //status: 'success',
+      post : updatePost,
+    });
+  } catch(error) {
+    return res.sendStatus(500);
+  }
 });
 
 exports.getAllPost = catchAsync(async (req, res, next) => {
 
+
   const myQquery = {accountType : "public"};
-  await Post.paginate({query : myQquery, limit : 10, next : req.body.next})
+  await Post.paginate({query : myQquery, limit : 10, next : req.body.next,previous : req.body.previous,})
     .then((result) => {
       res.status(200).json({
         status: 'success',
-        data: result.length,
-        posts : result,
+        data: result.results.length,
+        posts : result.results,
       });
     })
     .catch((err) => {
       console.log(err);
     });
   //const posts = await Post.find({})
-  const posts = await Post.find({accountType : "public"})
-    .sort({ createdAt: 'descending' })
-    .populate('Profile')
-    .limit(20);
-  res.status(200).json({
-    status: 'success',
-    data: posts.length,
-    posts,
-  });
+  // const posts = await Post.find({accountType : "public"})
+  //   .sort({ createdAt: 'descending' })
+  //   .populate('Profile')
+  //   .limit(20);
+  // res.status(200).json({
+  //   status: 'success',
+  //   data: posts.length,
+  //   posts,
+  // });
 });
 
 exports.getPostById = catchAsync(async (req, res, next) => {
-  const post = await Post.findById(req.params.id).populate({
-    path: 'profile',
-    select: '-bio -website -user -_v',
-  });
+  try {
+    if(!req.params.id){
+      return res.sendStatus(501);
+    }
 
-  if (!post) {
-    return next(new AppError('Post not found', 400));
+    // const post = await Post.findById(req.params.id).populate({
+    //   path: 'commentsPost',
+    //   //select: '-comment',
+    // });
+    //
+    //comment: {
+    
+    //const post = await Post.findById(req.params.id).populate('Comment').lean();
+    const post = await Post.findById(req.params.id).lean();
+        
+    if (!post) {
+      return next(new AppError('Post not found', 404));
+    }
+    post.id = post._id;
+    
+    const comments = await Comment.find({ post: req.params.id }).sort({"createdAt" : -1});
+    console.log(comments);
+    post.comments = comments;
+    console.log(post);
+
+    res.status(200).json({
+      //status: 'success',
+      post,
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.sendStatus(500);
   }
-
-  res.status(200).json({
-    status: 'success',
-    post,
-  });
 });
 
 exports.deletePost = catchAsync(async (req, res, next) => {
@@ -234,33 +264,47 @@ exports.deletePost = catchAsync(async (req, res, next) => {
 });
 
 exports.likePost = catchAsync(async (req, res, next) => {
-  const post = await Post.findById(req.params.id).populate('Profile');
+  try {
+    //const post = await Post.findById(req.params.id).populate('Profile');
+    const post = await Post.findById(req.params.id);
 
-  if (!post) {
-    return next(new AppError('Post not found', 400));
-  }
-  const id = await post.getProfileId(req.user.id);
-
-  if (post.likes.includes(id)) {
-    const index = post.likes.indexOf(id);
-    post.likes.splice(index, 1);
-    await post.save((err) => {
-      console.log(err);
-    });
-    // await Notification.deleteMany({
-    //   to: post.profile._id,
-    //   user: id,
-    //   type: 'Like',
+    if (!post) {
+      return next(new AppError('Post not found', 404));
+    }
+    
+    const profileId = req.user.id;
+    
+    // const profileId = await post.getProfileId(req.user.id);
+    
+    // if(!profileId) {
+    //   return next(new AppError('User not found', 400));
+    // }
+  
+    if (post.likes.includes(profileId)) {
+      const index = post.likes.indexOf(profileId);
+      post.likes.splice(index, 1);
+      await post.save();
+      // await post.save((err) => {
+      //   console.log(err);
+      // });
+      // await Notification.deleteMany({
+      //   to: post.profile._id,
+      //   user: id,
+      //   type: 'Like',
+      // });
+    } else {
+      post.likes.push(profileId);
+      await post.save();
+    }
+  
+    // res.status(200).json({
+    //   //status: 'success',
+    //   post,
     // });
-  } else {
-    post.likes.push(id);
-    await post.save();
+    return res.sendStatus(200);
+  } catch (error) {
+    return res.sendStatus(500);
   }
-
-  res.status(200).json({
-    status: 'success',
-    post,
-  });
 });
 
 exports.getPostByUserId = catchAsync(async (req, res, next) => {
@@ -287,87 +331,215 @@ exports.getPostByUserId = catchAsync(async (req, res, next) => {
 
 
 exports.getPostByFollow = catchAsync(async (req, res, next) => {
-  const myProfile = await Profile.findOne({ user: req.user.id });
-  const followerMap = myProfile.following;
-  const followerIdArray = new Array();
-  followerMap.forEach((value, key, mapObject) => {
-    console.log(key +' , ' + value.user);
-    followerIdArray.push(`${value.user}`);
-  });
-  
-  //const posts = await Post.find({user :{$in : followerIdArray}})
-  const posts = await Post.find({user : { $in : followerIdArray}, accountType : "public"})
-    .sort({ createdAt: 'descending' })
-    .populate('profile')
-    .lean();
-  //const posts = await Post.find({user :{$in : followerIdArray}}).lean();
+  try {
+    //const myProfile = await Profile.findOne({ user: req.user.id });
+    const myProfile = await User.findById(req.user.id);
+    const followerMap = myProfile.following;
+    //console.log(followerMap);
+    const followerIdArray = new Array();
+    followerMap.forEach((value, key, mapObject) => {
+      //console.log(key +' , ' + value.user);
+      //followerIdArray.push(`${value.user}`);
+      followerIdArray.push(`${value.userId}`);
+    });
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      posts,
-    },
-  });
+    //console.log(followerIdArray);
+
+    //const myQquery = {user : { $in : followerIdArray}, accountType : "public"};
+    //const myQquery = {user : { $in : followerIdArray}};
+    //const myQquery = {accountType : "public"};
+
+    await Post.paginate({
+      query : {
+        accountType : "public",
+        user : {$in : followerIdArray},
+        },
+      limit : 10,
+      next : req.body.next,
+      previous : req.body.previous,})
+      .then((result) => {
+        res.status(200).json({
+          //status: 'success',
+          data: result.results.length,
+          posts : result.results,
+          previous : result.previous,
+          hasPrevious : result.hasPrevious,
+          next : result.next,
+          hasNext : result.hasNext,
+        });
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+    // await Post.paginate({query : myQquery, limit : 10, next : req.body.next})
+    //   .then((result) => {
+    //     res.status(200).json({
+    //       status: 'success',
+    //       data: result.results.length,
+    //       posts : result.results,
+    //     });
+    //   })
+    //   .catch((err) => {
+    //     console.log(err);
+    //   });
+    
+    //const posts = await Post.find({user :{$in : followerIdArray}})
+    // const posts = await Post.find({user : { $in : followerIdArray}, accountType : "public"})
+    //   .sort({ createdAt: 'descending' })
+    //   .populate('profile')
+    //   .lean();
+    
+    // res.status(200).json({
+    //   status: 'success',
+    //   data: {
+    //     posts,
+    //   },
+    // });
+
+  } catch(error) {
+    console.log(error);
+    return res.sendStatus(500);
+  }
 });
 
 exports.getPostByMe = catchAsync(async (req, res, next) => {
-    
-  const posts = await Post.find({user: req.user.id})
-    .sort({ createdAt: 'descending' })
-    .populate('profile')
-    .lean();
-  //const posts = await Post.find({user :{$in : followerIdArray}}).lean();
+  try {
+    //console.log(req.user.id);
+    await Post.paginate({
+      query : {
+        user : req.user.id,
+        },
+       limit : 10,
+       next : req.body.next,
+       previous : req.body.previous,})
+      .then((result) => {
+        console.log(result);
+        res.status(200).json({
+          //status: 'success',
+          data: result.results.length,
+          posts : result.results,
+          previous : result.previous,
+          hasPrevious : result.hasPrevious,
+          next : result.next,
+          hasNext : result.hasNext,
+        });
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+      
+    // const posts = await Post.find({user: req.user.id})
+    //   .sort({ createdAt: 'descending' })
+    //   .populate('profile')
+    //   .lean();
+    // //const posts = await Post.find({user :{$in : followerIdArray}}).lean();
+  
+    // res.status(200).json({
+    //   status: 'success',
+    //   data: {
+    //     posts,
+    //   },
+    // });
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      posts,
-    },
-  });
+  } catch (error) {
+    return res.sendStatus(500);
+  }
 });
 
 exports.deletePostTest = catchAsync(async (req, res, next) => {
-  //const post = await Post.deleteOne({ _id: req.params.id });
-  const post = await Post.findById(req.params.id);
-  if (!post) {
-    return next(new AppError('Post not found', 400));
-  }
-  //  console.log(post, post.user.toString() === req.user.id)
-  if (post.user.toString() !== req.user.id) {
-    return next(
-      new AppError('You are not authorized to delete this post', 401)
-    );
-  }
-  //파일삭제 코드 추가하기.
-  const oldFile = post.file;
-  if(oldFile && oldFile !== "") {
-    console.log(oldFile);
-    fs.unlinkSync(`./uploads/${oldFile}`);
-  }
 
-  await Comment.deleteMany({post : req.params.id});
-  
-  await post.remove();
+  try {
+    //const post = await Post.deleteOne({ _id: req.params.id });
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return next(new AppError('Post not found', 404));
+    }
+    //  console.log(post, post.user.toString() === req.user.id)
+    if (post.user.toString() !== req.user.id) {
+      return next(
+        new AppError('You are not authorized to delete this post', 402)
+      );
+    }
+    //파일삭제 코드 추가하기.
+    const oldFile = post.file;
+    if(oldFile && oldFile !== "") {
+      //console.log(oldFile);
 
-  res.status(200).json({
-    message: 'deleted',
-  });
+      const oldFilePath = `./uploads/${oldFile}`;
+
+      if(fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(`./uploads/${oldFile}`);  
+      }
+
+      //fs.unlinkSync(`./uploads/${oldFile}`);
+    }
+
+    await Comment.deleteMany({post : req.params.id});
+    
+    await post.remove();
+
+    // res.status(200).json({
+    //   message: 'deleted',
+    // });
+    res.sendStatus(200);
+  } catch (error) {
+    console.log(error);
+    return res.sendStatus(500);
+  }
 });
 
 
 exports.searchHashTag = catchAsync(async (req, res, next) => {
-   //const queryField = new RegExp('^' + query);
+  try {
+     //const queryField = new RegExp('^' + query);
   
-  const query = req.query.hashTag;
-  //console.log(query);
-  //UserSchema.find({name: { $regex: '.*' + name + '.*' } }).limit(5);
-  //return res.sendStatus(200);
-  const result = await Post.find({ hashtag: { $regex: '.*' + query + '.*' } });
-  //const result = await Post.find({ hashtag: { $in: [queryField] } });
-  return res.status(200).json({
-    status: 'success',
-    data: result.length,
-    result,
-  });
+    if(!req.query.hashTag) {
+      return res.sendStatus(501);
+    }
+    const query = req.query.hashTag;
+    console.log(query);
+        
+    const result = await Post.find({ hashtag: { $regex: '.*' + query + '.*' } });
+    console.log(result.length);
+    console.log(result);
+    // return res.status(200).json({
+    //   //status: 'success',
+    //   data: result.length,
+    //   result,
+    // });
 
+    // query : {
+    //   user : req.user.id,
+    //   },
+    //  limit : 10,
+    //  next : req.body.next})
+
+    await Post.paginate({
+      query : {
+        accountType : "public",
+        hashtag: { $regex: '.*' + query + '.*' },
+        },
+      limit : 10,
+      next : req.body.next,
+      previous : req.body.previous,})
+      .then((result) => {
+        console.log(result);
+        res.status(200).json({
+          //status: 'success',
+          data: result.results.length,
+          posts : result.results,
+          previous : result.previous,
+          hasPrevious : result.hasPrevious,
+          next : result.next,
+          hasNext : result.hasNext,
+        });
+      })
+    .catch((err) => {
+      //console.log(err);
+      res.sendStatus(500);
+    });
+
+  } catch (error) {
+    return res.sendStatus(500);
+  }
 });

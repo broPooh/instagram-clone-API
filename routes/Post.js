@@ -34,7 +34,8 @@ router
 router
   .route('/')
   .get(protect, getProfileId, getAllPost)
-  .post(protect, getProfileId, upload.array('image'), createPost);
+  .post(protect, getProfileId, uploadTest.single('file'), createPostTest);
+  //.post(protect, getProfileId, upload.array('image'), createPost);
 
 router.route('/test').post(protect, getProfileId, uploadTest.single('file'), createPostTest);
 
@@ -42,10 +43,15 @@ router.route('/getPostByUserId/:id').get(protect, getProfileId, getPostByUserId)
 router.route('/getPostByFollow').get(protect, getProfileId, getPostByFollow);
 router.route('/getPostByMe').get(protect, getProfileId, getPostByMe);
 
-router.route('/:id').get(getPostById).delete(protect, deletePost);
-router.route('/test/:id').delete(protect, deletePostTest);
+router
+  .route('/:id')
+  .get(getPostById)
+  .delete(protect, deletePostTest);
+  //.delete(protect, deletePost);
+
+  router.route('/test/:id').delete(protect, deletePostTest);
               //.put(protect, updatePost)
-router.route('/test/update/:id').post(protect, getProfileId, uploadTest.single('file'), updatePost);
+router.route('/update/:id').patch(protect, getProfileId, uploadTest.single('file'), updatePost);
 
 
 router.route('/like/:id').post(protect, likePost);

@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema(
   { username: {
       type: String,
+      required: [true, 'username is required'],
       trim: true,
     },
     email: {
@@ -20,19 +21,49 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Password is required'],
       select: false,
     },
+    // name: {
+    //   type: String,
+    // },
+    photo: {
+      type: String,
+      default:
+        'https://res.cloudinary.com/brocloudinary/image/upload/v1644206367/cld-sample.jpg',
+    },
+    followers: {
+      type: Map,
+      of: {
+        userId: {
+          type: String,
+        },
+      },
+      default: {},
+    },
+    following: {
+      type: Map,
+      of: {
+        userId: {
+          type: String,
+        },
+      },
+      default: {},
+    },
 
-    passwordChangedAt: {
-      type: Date,
-    },
-    passwordResetToken: String,
-    passwordResetExpires: Date,
-    active: {
-      type: Boolean,
-      default: true,
-      select: false,
-    },
+    // passwordChangedAt: {
+    //   type: Date,
+    // },
+    // passwordResetToken: String,
+    // passwordResetExpires: Date,
+    // active: {
+    //   type: Boolean,
+    //   default: true,
+    //   select: false,
+    // },
   },
-  { timestamps: true }
+  //{ timestamps: true },
+  {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
 //^Hash password
